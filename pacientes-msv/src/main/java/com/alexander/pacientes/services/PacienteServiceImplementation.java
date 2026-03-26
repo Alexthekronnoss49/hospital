@@ -2,12 +2,12 @@ package com.alexander.pacientes.services;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Iterator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.alexander.commons.clients.CitaCliente;
 import com.alexander.commons.dto.PacienteRequest;
 import com.alexander.commons.dto.PacienteResponse;
 import com.alexander.commons.enums.EstadoRegistro;
@@ -28,6 +28,8 @@ public class PacienteServiceImplementation implements PacienteService{
 	private final PacienteRepository pacienteRepository;
 	
 	private final PacienteMapper pacienteMapper;
+	
+	private final CitaCliente citaCliente;
 	
 	@Override
 	@Transactional(readOnly = true)
@@ -70,6 +72,12 @@ public class PacienteServiceImplementation implements PacienteService{
 	@Override
 	public PacienteResponse actualizar(PacienteRequest request, Long id) {
 		
+		if (obtenerDatosCita(id)) {
+			throw new
+			IllegalArgumentException
+			("No se puede actualizar un paciente si tiene citas confirmadas o en curso.");
+		}
+		
 		Paciente paciente = obtenerPacienteOException(id);
 		
 		comprobarEmalUnicoActualizar(request.email(), id);
@@ -94,6 +102,12 @@ public class PacienteServiceImplementation implements PacienteService{
 	@Override
 	public void eliminar(Long id) {
 		Paciente paciente = obtenerPacienteOException(id);
+		
+		if (obtenerDatosCita(id)) {
+			throw new
+			IllegalArgumentException
+			("No se puede eliminar un paciente si tiene citas confirmadas o en curso.");
+		}
 		
 		paciente.setEstadoRegistro(EstadoRegistro.ELIMINADO);
 		
@@ -171,6 +185,8 @@ public class PacienteServiceImplementation implements PacienteService{
 		
 	}
 
-	
+	private boolean obtenerDatosCita(Long idPaciente) {
+		return citaCliente.obtenerCitaConfirmadaOEnCurso(idPaciente);
+	}
 
 }

@@ -7,6 +7,7 @@ import com.alexander.medicos.entities.Medico;
 import java.util.List;
 import java.util.Optional;
 
+import com.alexander.commons.enums.DisponibilidadMedico;
 import com.alexander.commons.enums.EstadoRegistro;
 
 
@@ -28,4 +29,6 @@ public interface MedicoRepository extends JpaRepository<Medico, Long>{
 	boolean existsByCedulaProfesionalAndEstadoRegistro(String cedulaProfesional, EstadoRegistro estadoRegistro);
 	
 	boolean existsByCedulaProfesionalAndIdNotAndEstadoRegistro(String cedulaProfesional, Long id, EstadoRegistro estadoRegistro);
+	
+	Optional<Medico> findByIdAndDisponibildadMedico(Long id, DisponibilidadMedico disponibilidadMedico);
 }

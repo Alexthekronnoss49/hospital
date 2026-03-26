@@ -4,7 +4,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.alexander.commons.controllers.CommonController;
@@ -15,7 +14,6 @@ import com.alexander.pacientes.services.PacienteService;
 import jakarta.validation.constraints.Positive;
 
 @RestController
-@RequestMapping("/pacientes")
 @Validated
 public class PacienteController extends CommonController<PacienteRequest, PacienteResponse, PacienteService>{
 

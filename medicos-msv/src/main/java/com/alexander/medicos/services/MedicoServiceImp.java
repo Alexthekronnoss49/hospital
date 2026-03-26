@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.alexander.commons.clients.CitaCliente;
 import com.alexander.commons.dto.MedicoRequest;
 import com.alexander.commons.dto.MedicoResponse;
 import com.alexander.commons.enums.DisponibilidadMedico;
@@ -27,6 +28,8 @@ public class MedicoServiceImp  implements MedicoService{
 	private final MedicoRepository medicoRepository;
 	
 	private final MedicoMapper medicoMapper;
+	
+	private final CitaCliente citaCliente;
 	
 	@Override
 	@Transactional(readOnly = true)
@@ -80,6 +83,13 @@ public class MedicoServiceImp  implements MedicoService{
 
 	@Override
 	public void eliminar(Long id) {
+		
+		if (obtenerDatosCita(id)) {
+			throw new
+			IllegalArgumentException
+			("No se puede eliminar un médico si tiene citas confirmadas o en curso.");
+		}
+		
 		Medico medico = obtenerMedicoOExceptionMedico(id);
 		
 		medico.setEstadoRegistro(EstadoRegistro.ELIMINADO);
@@ -131,6 +141,26 @@ public class MedicoServiceImp  implements MedicoService{
 			throw new IllegalArgumentException("Esa cédula ya está registrada.");
 		}
 		
+	}
+	
+	private boolean obtenerDatosCita(Long idMedico) {
+		return citaCliente.obtenerCitaConfirmadaOEnCursoMedico(idMedico);
+	}
+
+	@Override
+	public void actualizarDisponibilidad(Long idMedico, Long idDisp) {
+		Medico medico = obtenerMedicoOExceptionMedico(idMedico);
+		
+		medico.setDisponibildadMedico(DisponibilidadMedico.fromCodigo(idDisp));
+		
+		medicoRepository.save(medico);
+		
+	}
+
+	@Override
+	public MedicoResponse obtenerMedicoConDisponibilidad(Long id) {
+		return medicoMapper.entityToResponse(medicoRepository.findByIdAndDisponibildadMedico(id, DisponibilidadMedico.DISPONIBLE).orElseThrow(() ->
+		new RecursoNoEncontradoException("Médico NO disponible: "+id)));
 	}
 
 	

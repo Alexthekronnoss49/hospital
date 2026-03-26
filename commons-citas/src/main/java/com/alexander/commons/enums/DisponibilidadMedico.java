@@ -25,4 +25,5 @@ public enum DisponibilidadMedico {
         }
         throw new IllegalArgumentException("Código de disponibilidad no válido: " + codigo);
     }
+	
 }
