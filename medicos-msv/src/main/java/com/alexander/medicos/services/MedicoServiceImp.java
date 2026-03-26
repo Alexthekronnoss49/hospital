@@ -96,6 +96,28 @@ public class MedicoServiceImp  implements MedicoService{
 		
 	}
 	
+	@Override
+	public void actualizarDisponibilidad(Long idMedico, Long idDisp) {
+		Medico medico = obtenerMedicoOExceptionMedico(idMedico);
+		
+		if (obtenerDatosCita(idMedico)) {
+			throw new
+			IllegalArgumentException
+			("No se puede Cambiar la disponibilidad de un médico si tiene citas confirmadas o en curso.");
+		}
+		
+		medico.setDisponibildadMedico(DisponibilidadMedico.fromCodigo(idDisp));
+		
+		medicoRepository.save(medico);
+		
+	}
+
+	@Override
+	public MedicoResponse obtenerMedicoConDisponibilidad(Long id) {
+		return medicoMapper.entityToResponse(medicoRepository.findByIdAndDisponibildadMedico(id, DisponibilidadMedico.DISPONIBLE).orElseThrow(() ->
+		new RecursoNoEncontradoException("Médico NO disponible: "+id)));
+	}
+	
 	private Medico obtenerMedicoOExceptionMedico(Long id) {
 		return medicoRepository.findByIdAndEstadoRegistro(id, EstadoRegistro.ACTIVO).orElseThrow(() ->
 				new RecursoNoEncontradoException("Médico activo no encontrado con el id: "+id));
@@ -147,21 +169,7 @@ public class MedicoServiceImp  implements MedicoService{
 		return citaCliente.obtenerCitaConfirmadaOEnCursoMedico(idMedico);
 	}
 
-	@Override
-	public void actualizarDisponibilidad(Long idMedico, Long idDisp) {
-		Medico medico = obtenerMedicoOExceptionMedico(idMedico);
-		
-		medico.setDisponibildadMedico(DisponibilidadMedico.fromCodigo(idDisp));
-		
-		medicoRepository.save(medico);
-		
-	}
-
-	@Override
-	public MedicoResponse obtenerMedicoConDisponibilidad(Long id) {
-		return medicoMapper.entityToResponse(medicoRepository.findByIdAndDisponibildadMedico(id, DisponibilidadMedico.DISPONIBLE).orElseThrow(() ->
-		new RecursoNoEncontradoException("Médico NO disponible: "+id)));
-	}
+	
 
 	
 }

@@ -4,7 +4,9 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient(name = "citas-msv")
+import com.alexander.commons.configuration.FeignClientConfig;
+
+@FeignClient(name = "citas-msv", configuration = FeignClientConfig.class)
 public interface CitaCliente {
 
 	@GetMapping("/comprobar-cita/{id}")

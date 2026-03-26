@@ -1,10 +1,10 @@
 package com.alexander.citas.services;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.alexander.citas.CitasMsvApplication;
 import com.alexander.citas.dto.CitaRequest;
 import com.alexander.citas.dto.CitaResponse;
 import com.alexander.citas.entities.Cita;
@@ -15,7 +15,6 @@ import com.alexander.commons.clients.MedicoClient;
 import com.alexander.commons.clients.PacienteClient;
 import com.alexander.commons.dto.MedicoResponse;
 import com.alexander.commons.dto.PacienteResponse;
-import com.alexander.commons.enums.DisponibilidadMedico;
 import com.alexander.commons.enums.EstadoRegistro;
 import com.alexander.commons.exceptions.RecursoNoEncontradoException;
 
@@ -36,7 +35,6 @@ public class CitaServiceImp implements CitaService{
 	
 	private final MedicoClient medicoClient;
 
-	
 	@Override
 	@Transactional(readOnly = true)
 	public List<CitaResponse> listar() {
@@ -78,10 +76,14 @@ public class CitaServiceImp implements CitaService{
 	public CitaResponse registrar(CitaRequest request) {
 		
 		comprobarCitaExistente(request.idPaciente());
+		
+		comprobarCitasPendientesEnCursoOConfirmadasMedico(request.idMedico());
 			
 		PacienteResponse paciente = obtenerPacienteResponse(request.idPaciente());
 
 		MedicoResponse medico = obtenerMedicoDisponibleResponse(request.idMedico());
+		
+		medicoClient.actualizarDisp(medico.id(), 5L);
 		
 		Cita cita = citaRepository.save(citasMapper.requestToEntity(request));
 		
@@ -90,15 +92,34 @@ public class CitaServiceImp implements CitaService{
 
 	@Override
 	public CitaResponse actualizar(CitaRequest request, Long id) {
+		
+		comprobarCitaExistentePacienteActualizar(request.idPaciente(), id);
+		
 		Cita cita = obtenerCitaOException(id);
+		
+		if (cita.getEstadoCita().equals(EstadoCita.PENDIENTE) || cita.getEstadoCita().equals(EstadoCita.CONFIRMADA)) {
+			
+		}else {
+			throw new IllegalArgumentException("No se puede actualizar una cita que no esté en estado pendiente o confirmada.");
+		}
 		
 		PacienteResponse paciente = obtenerPacienteResponse(request.idPaciente());
 		
-		MedicoResponse medico = obtenerMedicoResponse(request.idMedico());
+		MedicoResponse medico;
+		
+		if (request.idMedico() == cita.getIdMedico()) {
+			 medico = obtenerMedicoResponse(request.idMedico());
+		}else {
+			medico = obtenerMedicoDisponibleResponse(request.idMedico());
+		}
+		
+		comprobarCitasPendientesEnCursoOConfirmadasMedicoActualizar(medico.id(), id);
 		
 		EstadoCita estadoNuevo = EstadoCita.fromCodigo(request.idEstadoCita());
 		
-		comprobarTransicionCita(cita.getEstadoCita(), estadoNuevo, request.idMedico());
+		medicoClient.actualizarDisp(cita.getIdMedico(), 1L);
+		
+		comprobarTransicionCita(cita.getEstadoCita(), estadoNuevo, medico.id());
 		
 		citasMapper.updateEntityFromRequest(request, cita, estadoNuevo);
 		
@@ -111,6 +132,45 @@ public class CitaServiceImp implements CitaService{
 		validarEstadoCitaAlEliminar(cita);
 		
 		cita.setEstadoRegistro(EstadoRegistro.ELIMINADO);
+	}
+	
+	@Override
+	public boolean obtenerCitasConfirmadasOEnCurso(Long id) {
+		Cita cita = citaRepository.findByIdPacienteAndEstadoCitaOrEstadoCita(id, EstadoCita.CONFIRMADA, EstadoCita.EN_CURSO);
+		if (cita != null) {
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean obtenerCitasConfirmadasOEnCursoMedico(Long id) {
+		Cita cita = citaRepository.findByIdMedicoAndEstadoCitaOrEstadoCita(id, EstadoCita.CONFIRMADA, EstadoCita.EN_CURSO);
+		if (cita != null) {
+			return true;
+		}
+		return false;
+	}
+	
+
+	@Override
+	public CitaResponse actualizarEstado(Long id, Long idEstado) {
+		
+		Cita cita = obtenerCitaOException(id);
+		
+		PacienteResponse paciente = obtenerPacienteResponse(cita.getIdPaciente());
+		
+		MedicoResponse medico = obtenerMedicoResponse(cita.getIdMedico());
+		
+		EstadoCita estadoNuevo = EstadoCita.fromCodigo(idEstado);
+		
+		comprobarTransicionCita(cita.getEstadoCita(), estadoNuevo, medico.id());
+		
+		cita.setEstadoCita(estadoNuevo);
+		
+		Cita citaActualizada = citaRepository.save(cita);
+		
+		return citasMapper.entityToResponse(citaActualizada, paciente, medico);
 	}
 	
 	private Cita obtenerCitaOException(Long id) {
@@ -152,44 +212,35 @@ public class CitaServiceImp implements CitaService{
 			throw new IllegalArgumentException("Este paciente ya tiene una cita activa.");
 		}
 	}
-
-	@Override
-	public boolean obtenerCitasConfirmadasOEnCurso(Long id) {
-		Cita cita = citaRepository.findByIdPacienteAndEstadoCitaOrEstadoCita(id, EstadoCita.CONFIRMADA, EstadoCita.EN_CURSO);
-		if (cita != null) {
-			return true;
+	
+	private void comprobarCitaExistentePacienteActualizar(Long idPacente, Long idCita) {
+		if(citaRepository.existsByIdPacienteAndEstadoRegistroAndIdNot(idPacente, EstadoRegistro.ACTIVO, idCita)) {
+			throw new IllegalArgumentException("Este paciente ya tiene una cita activa.");
 		}
-		return false;
 	}
 	
-	@Override
-	public boolean obtenerCitasConfirmadasOEnCursoMedico(Long id) {
-		Cita cita = citaRepository.findByIdMedicoAndEstadoCitaOrEstadoCita(id, EstadoCita.CONFIRMADA, EstadoCita.EN_CURSO);
-		if (cita != null) {
-			return true;
+	private void comprobarCitasPendientesEnCursoOConfirmadasMedico(Long id) {
+		List<EstadoCita> estadosCita = new ArrayList<>();
+		estadosCita.add(EstadoCita.PENDIENTE);
+		estadosCita.add(EstadoCita.CONFIRMADA);
+		estadosCita.add(EstadoCita.EN_CURSO);
+		
+		if (citaRepository.existsByIdMedicoAndEstadoRegistroAndEstadoCitaIn(id, EstadoRegistro.ACTIVO,  estadosCita)) {
+			throw new IllegalArgumentException("No se le puede asignar más de una cita a un médico.");
 		}
-		return false;
 	}
 	
-
-	@Override
-	public CitaResponse actualizarEstado(Long id, Long idEstado) {
+	private void comprobarCitasPendientesEnCursoOConfirmadasMedicoActualizar(Long idMedico, Long idCita) {
+		List<EstadoCita> estadosCita = new ArrayList<>();
+		estadosCita.add(EstadoCita.PENDIENTE);
+		estadosCita.add(EstadoCita.CONFIRMADA);
+		estadosCita.add(EstadoCita.EN_CURSO);
 		
-		Cita cita = obtenerCitaOException(id);
 		
-		PacienteResponse paciente = obtenerPacienteResponse(cita.getIdPaciente());
-		
-		MedicoResponse medico = obtenerMedicoResponse(cita.getIdMedico());
-		
-		EstadoCita estadoNuevo = EstadoCita.fromCodigo(idEstado);
-		
-		comprobarTransicionCita(cita.getEstadoCita(), estadoNuevo, medico.id());
-		
-		cita.setEstadoCita(estadoNuevo);
-		
-		Cita citaActualizada = citaRepository.save(cita);
-		
-		return citasMapper.entityToResponse(citaActualizada, paciente, medico);
+		if (citaRepository.existsByIdMedicoAndIdNotAndEstadoRegistroAndEstadoCitaIn
+				(idMedico, idCita, EstadoRegistro.ACTIVO,  estadosCita)) {
+			throw new IllegalArgumentException("No se le puede asignar más de una cita a un médico.");
+		}
 	}
 	
 	private void comprobarTransicionCita(EstadoCita estadoCitaActual, EstadoCita estadoNuevo, Long idMedico) {
@@ -202,6 +253,10 @@ public class CitaServiceImp implements CitaService{
 				
 			}else if (estadoNuevo == EstadoCita.CANCELADA){
 				medicoClient.actualizarDisp(idMedico, 1L);
+				
+			}else if (estadoNuevo == EstadoCita.PENDIENTE){
+				medicoClient.actualizarDisp(idMedico, 5L);
+				
 			}else {
 				throw new IllegalArgumentException("Las citas pendientes solo se pueden confirmar o cancelar");
 			}
@@ -215,6 +270,10 @@ public class CitaServiceImp implements CitaService{
 				
 			}else if (estadoNuevo != EstadoCita.CANCELADA){
 				medicoClient.actualizarDisp(idMedico, 1L);
+				
+			}else if (estadoNuevo == EstadoCita.CONFIRMADA){
+				medicoClient.actualizarDisp(idMedico, 5L);
+				
 			}else {
 				throw new IllegalArgumentException("Las citas confirmadas solo se pueden poner en curso o cancelar");
 			}
@@ -225,6 +284,9 @@ public class CitaServiceImp implements CitaService{
 			
 			if (estadoNuevo == EstadoCita.FINALIZADA){
 				medicoClient.actualizarDisp(idMedico, 1L);
+				
+			}else if (estadoNuevo == EstadoCita.EN_CURSO){
+				medicoClient.actualizarDisp(idMedico, 2L);
 				
 			}else {
 				throw new IllegalArgumentException("Las citas en curso solo se pueden finalizar");

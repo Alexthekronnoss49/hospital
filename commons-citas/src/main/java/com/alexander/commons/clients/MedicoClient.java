@@ -5,11 +5,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 
+import com.alexander.commons.configuration.FeignClientConfig;
 import com.alexander.commons.dto.MedicoResponse;
 
 import jakarta.validation.constraints.Positive;
 
-@FeignClient(name = "medicos-msv")
+@FeignClient(name = "medicos-msv", configuration = FeignClientConfig.class)
 public interface MedicoClient {
 	
 	@GetMapping("/{id}")
