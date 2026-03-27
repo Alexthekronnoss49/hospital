@@ -73,6 +73,13 @@ public class GlobalHandlerException {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(HttpStatus.CONFLICT.value(), e.getMessage()));
     }
+    
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> IllegalStateException(IllegalStateException e) {
+        log.warn("Estado no válido: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), e.getMessage()));
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception e) {

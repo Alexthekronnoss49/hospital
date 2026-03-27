@@ -14,5 +14,5 @@ public interface CitaCliente {
 	
 	@GetMapping("/comprobar-cita-medico/{id}")
 	boolean obtenerCitaConfirmadaOEnCursoMedico(@PathVariable Long id);
-	
+
 }

@@ -16,6 +16,7 @@ import com.alexander.commons.clients.PacienteClient;
 import com.alexander.commons.dto.MedicoResponse;
 import com.alexander.commons.dto.PacienteResponse;
 import com.alexander.commons.enums.EstadoRegistro;
+import com.alexander.commons.exceptions.EntidadRelacionadaException;
 import com.alexander.commons.exceptions.RecursoNoEncontradoException;
 
 import lombok.AllArgsConstructor;
@@ -117,6 +118,7 @@ public class CitaServiceImp implements CitaService{
 		
 		EstadoCita estadoNuevo = EstadoCita.fromCodigo(request.idEstadoCita());
 		
+		
 		medicoClient.actualizarDisp(cita.getIdMedico(), 1L);
 		
 		comprobarTransicionCita(cita.getEstadoCita(), estadoNuevo, medico.id());
@@ -132,11 +134,17 @@ public class CitaServiceImp implements CitaService{
 		validarEstadoCitaAlEliminar(cita);
 		
 		cita.setEstadoRegistro(EstadoRegistro.ELIMINADO);
+		
+		medicoClient.actualizarDisp(cita.getIdMedico(), 1L);
 	}
 	
 	@Override
 	public boolean obtenerCitasConfirmadasOEnCurso(Long id) {
-		Cita cita = citaRepository.findByIdPacienteAndEstadoCitaOrEstadoCita(id, EstadoCita.CONFIRMADA, EstadoCita.EN_CURSO);
+		List<EstadoCita> estadosCita = new ArrayList<>();
+		estadosCita.add(EstadoCita.CONFIRMADA);
+		estadosCita.add(EstadoCita.EN_CURSO);
+		
+		Cita cita = citaRepository.findByIdPacienteAndEstadoCitaIn(id, estadosCita);
 		if (cita != null) {
 			return true;
 		}
@@ -145,7 +153,11 @@ public class CitaServiceImp implements CitaService{
 	
 	@Override
 	public boolean obtenerCitasConfirmadasOEnCursoMedico(Long id) {
-		Cita cita = citaRepository.findByIdMedicoAndEstadoCitaOrEstadoCita(id, EstadoCita.CONFIRMADA, EstadoCita.EN_CURSO);
+		List<EstadoCita> estadosCita = new ArrayList<>();
+		estadosCita.add(EstadoCita.CONFIRMADA);
+		estadosCita.add(EstadoCita.EN_CURSO);
+		
+		Cita cita = citaRepository.findByIdMedicoAndEstadoCitaIn(id, estadosCita);
 		if (cita != null) {
 			return true;
 		}
@@ -180,9 +192,7 @@ public class CitaServiceImp implements CitaService{
 	
 	private void validarEstadoCitaAlEliminar(Cita cita) {
 		if (cita.getEstadoCita() == EstadoCita.CONFIRMADA || cita.getEstadoCita() == EstadoCita.EN_CURSO) {
-			throw new IllegalStateException("No se puede eliminar una cita "+
-					EstadoCita.CONFIRMADA.getDescripcion() + " o "+
-					EstadoCita.EN_CURSO.getDescripcion());
+			throw new EntidadRelacionadaException("No se puede eliminar una cita confirmada o en curso.");
 		}
 	}
 	
@@ -208,13 +218,23 @@ public class CitaServiceImp implements CitaService{
 	}
 	
 	private void comprobarCitaExistente(Long idPacente) {
-		if(citaRepository.existsByIdPacienteAndEstadoRegistroNot(idPacente, EstadoRegistro.ELIMINADO)) {
+		List<EstadoCita> estadosCita = new ArrayList<>();
+		estadosCita.add(EstadoCita.PENDIENTE);
+		estadosCita.add(EstadoCita.CONFIRMADA);
+		estadosCita.add(EstadoCita.EN_CURSO);
+		
+		if(citaRepository.existsByIdPacienteAndEstadoRegistroAndEstadoCitaIn(idPacente, EstadoRegistro.ACTIVO, estadosCita)) {
 			throw new IllegalArgumentException("Este paciente ya tiene una cita activa.");
 		}
 	}
 	
 	private void comprobarCitaExistentePacienteActualizar(Long idPacente, Long idCita) {
-		if(citaRepository.existsByIdPacienteAndEstadoRegistroAndIdNot(idPacente, EstadoRegistro.ACTIVO, idCita)) {
+		List<EstadoCita> estadosCita = new ArrayList<>();
+		estadosCita.add(EstadoCita.PENDIENTE);
+		estadosCita.add(EstadoCita.CONFIRMADA);
+		estadosCita.add(EstadoCita.EN_CURSO);
+		
+		if(citaRepository.existsByIdPacienteAndEstadoRegistroAndEstadoCitaInAndIdNot(idPacente, EstadoRegistro.ACTIVO, estadosCita, idCita)) {
 			throw new IllegalArgumentException("Este paciente ya tiene una cita activa.");
 		}
 	}
@@ -258,7 +278,7 @@ public class CitaServiceImp implements CitaService{
 				medicoClient.actualizarDisp(idMedico, 5L);
 				
 			}else {
-				throw new IllegalArgumentException("Las citas pendientes solo se pueden confirmar o cancelar");
+				throw new IllegalStateException("Las citas pendientes solo se pueden confirmar o cancelar");
 			}
 		
 			break;
@@ -268,14 +288,14 @@ public class CitaServiceImp implements CitaService{
 			if (estadoNuevo == EstadoCita.EN_CURSO){
 				medicoClient.actualizarDisp(idMedico, 2L);
 				
-			}else if (estadoNuevo != EstadoCita.CANCELADA){
+			}else if (estadoNuevo == EstadoCita.CANCELADA){
 				medicoClient.actualizarDisp(idMedico, 1L);
 				
 			}else if (estadoNuevo == EstadoCita.CONFIRMADA){
 				medicoClient.actualizarDisp(idMedico, 5L);
 				
 			}else {
-				throw new IllegalArgumentException("Las citas confirmadas solo se pueden poner en curso o cancelar");
+				throw new IllegalStateException("Las citas confirmadas solo se pueden poner en curso o cancelar");
 			}
 		
 			break;
@@ -289,20 +309,20 @@ public class CitaServiceImp implements CitaService{
 				medicoClient.actualizarDisp(idMedico, 2L);
 				
 			}else {
-				throw new IllegalArgumentException("Las citas en curso solo se pueden finalizar");
+				throw new IllegalStateException("Las citas en curso solo se pueden finalizar");
 			}
 		
 			break;
 		
 		case FINALIZADA: 
-			throw new IllegalArgumentException("No se puede actualizar una cita finalizada");
+			throw new IllegalStateException("No se puede actualizar una cita finalizada");
 			
 		case CANCELADA: 
-			throw new IllegalArgumentException("No se puede actualizar una cita cancelada");
+			throw new IllegalStateException("No se puede actualizar una cita cancelada");
 		
 		
 		default:
-			throw new IllegalArgumentException("Estado de cita no válido");
+			throw new IllegalStateException("Estado de cita no válido");
 		}
 		
 	}

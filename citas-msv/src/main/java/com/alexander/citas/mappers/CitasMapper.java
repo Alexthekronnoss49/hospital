@@ -73,7 +73,6 @@ public class CitasMapper implements CommonMapper<CitaRequest, CitaResponse, Cita
 		updateEntityFromRequest(request, entity);
 		entity.setEstadoCita(estadoCita);
 
-		
 		return entity;
 	}
 	

@@ -11,6 +11,7 @@ import com.alexander.commons.clients.CitaCliente;
 import com.alexander.commons.dto.PacienteRequest;
 import com.alexander.commons.dto.PacienteResponse;
 import com.alexander.commons.enums.EstadoRegistro;
+import com.alexander.commons.exceptions.EntidadRelacionadaException;
 import com.alexander.commons.exceptions.RecursoNoEncontradoException;
 import com.alexander.pacientes.entitites.Paciente;
 import com.alexander.pacientes.mappers.PacienteMapper;
@@ -105,7 +106,7 @@ public class PacienteServiceImplementation implements PacienteService{
 		
 		if (obtenerDatosCita(id)) {
 			throw new
-			IllegalArgumentException
+			EntidadRelacionadaException
 			("No se puede eliminar un paciente si tiene citas confirmadas o en curso.");
 		}
 		

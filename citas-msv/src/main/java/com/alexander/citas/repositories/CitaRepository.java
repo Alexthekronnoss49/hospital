@@ -3,7 +3,6 @@ package com.alexander.citas.repositories;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.alexander.citas.dto.CitaResponse;
 import com.alexander.citas.entities.Cita;
 import java.util.List;
 import java.util.Optional;
@@ -20,13 +19,13 @@ public interface CitaRepository extends JpaRepository<Cita, Long>{
 
 	Optional<Cita> findByIdAndEstadoRegistro(Long id, EstadoRegistro estadoRegistro);
 	
-	boolean existsByIdPacienteAndEstadoRegistroNot(Long idPaciente, EstadoRegistro estadoRegistro);
+	boolean existsByIdPacienteAndEstadoRegistroAndEstadoCitaIn(Long idPaciente, EstadoRegistro estadoRegistro, List<EstadoCita> estados);
 	
-	boolean existsByIdPacienteAndEstadoRegistroAndIdNot(Long idPaciente, EstadoRegistro estadoRegistro, Long idCita);
+	boolean existsByIdPacienteAndEstadoRegistroAndEstadoCitaInAndIdNot(Long idPaciente, EstadoRegistro estadoRegistro, List<EstadoCita> estados, Long idCita);
 	
-	Cita findByIdPacienteAndEstadoCitaOrEstadoCita(Long id, EstadoCita estadoCita, EstadoCita estadoCita2);
+	Cita findByIdPacienteAndEstadoCitaIn(Long id, List<EstadoCita> estadoCita);
 	
-	Cita findByIdMedicoAndEstadoCitaOrEstadoCita(Long idMedico, EstadoCita estadoCita, EstadoCita estadoCita2);
+	Cita findByIdMedicoAndEstadoCitaIn(Long idMedico, List<EstadoCita> estadoCita);
 	
 	boolean existsByIdMedicoAndEstadoRegistroAndEstadoCitaIn
 	(Long idMedico, EstadoRegistro estadoRegistro, List<EstadoCita> estados);

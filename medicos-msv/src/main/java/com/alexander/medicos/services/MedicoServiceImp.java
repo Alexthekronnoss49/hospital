@@ -11,6 +11,7 @@ import com.alexander.commons.dto.MedicoResponse;
 import com.alexander.commons.enums.DisponibilidadMedico;
 import com.alexander.commons.enums.EspecialidadMedico;
 import com.alexander.commons.enums.EstadoRegistro;
+import com.alexander.commons.exceptions.EntidadRelacionadaException;
 import com.alexander.commons.exceptions.RecursoNoEncontradoException;
 import com.alexander.medicos.entities.Medico;
 import com.alexander.medicos.mappers.MedicoMapper;
@@ -86,7 +87,7 @@ public class MedicoServiceImp  implements MedicoService{
 		
 		if (obtenerDatosCita(id)) {
 			throw new
-			IllegalArgumentException
+			EntidadRelacionadaException
 			("No se puede eliminar un médico si tiene citas confirmadas o en curso.");
 		}
 		
@@ -99,23 +100,17 @@ public class MedicoServiceImp  implements MedicoService{
 	@Override
 	public void actualizarDisponibilidad(Long idMedico, Long idDisp) {
 		Medico medico = obtenerMedicoOExceptionMedico(idMedico);
+
+			medico.setDisponibildadMedico(DisponibilidadMedico.fromCodigo(idDisp));
 		
-		if (obtenerDatosCita(idMedico)) {
-			throw new
-			IllegalArgumentException
-			("No se puede Cambiar la disponibilidad de un médico si tiene citas confirmadas o en curso.");
-		}
-		
-		medico.setDisponibildadMedico(DisponibilidadMedico.fromCodigo(idDisp));
-		
-		medicoRepository.save(medico);
-		
+			medicoRepository.save(medico);
+			
 	}
 
 	@Override
 	public MedicoResponse obtenerMedicoConDisponibilidad(Long id) {
 		return medicoMapper.entityToResponse(medicoRepository.findByIdAndDisponibildadMedico(id, DisponibilidadMedico.DISPONIBLE).orElseThrow(() ->
-		new RecursoNoEncontradoException("Médico NO disponible: "+id)));
+		new IllegalStateException("Médico NO disponible: "+id)));
 	}
 	
 	private Medico obtenerMedicoOExceptionMedico(Long id) {
